@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>115年度智慧雨林產業創生補助計畫 - 機構活動簽到平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .loader { border-top-color: #0d9488; animation: spinner 0.8s linear infinite; }
+    @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <!-- 頂部導覽列 -->
+  <header class="bg-teal-700 text-white shadow-md sticky top-0 z-20">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex justify-between items-center">
+      <div>
+        <h1 class="font-bold text-lg tracking-wide">智慧雨林計畫｜機構活動簽到</h1>
+        <p class="text-xs text-teal-100">執行期間：11/23 ～ 1/15（每週一至週五）</p>
+      </div>
+      <div id="userBadge" class="hidden flex items-center gap-2">
+        <span id="staffNameDisplay" class="text-sm bg-teal-800 px-2.5 py-1 rounded-full"></span>
+        <button onclick="logout()" class="text-xs bg-rose-600 hover:bg-rose-700 px-2.5 py-1.5 rounded">登出</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto p-4 pb-20">
+
+    <!-- 1. 登入區塊 -->
+    <section id="loginSection" class="bg-white rounded-xl shadow-sm p-6 mt-6 max-w-md mx-auto border border-slate-200">
+      <h2 class="text-xl font-bold text-slate-800 mb-1">負責同仁登入</h2>
+      <p class="text-sm text-slate-500 mb-5">請輸入配發之帳號密碼進行機構點名</p>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">同仁帳號</label>
+          <input type="text" id="username" autocapitalize="none" autocorrect="off" placeholder="例如：admin 或 staff01" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">登入密碼</label>
+          <input type="password" id="password" placeholder="請輸入密碼" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500">
+        </div>
+        <button onclick="login()" id="loginBtn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 rounded-lg transition shadow">
+          登入系統
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. 主操作區塊 -->
+    <section id="mainSection" class="hidden space-y-5">
+      
+      <!-- 機構與日期選擇卡片 -->
+      <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-200 space-y-4">
+        <div>
+          <label class="block text-sm font-bold text-slate-700 mb-1">1. 選擇負責機構單位</label>
+          <select id="institutionSelect" onchange="onInstitutionChange()" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 bg-white focus:ring-2 focus:ring-teal-500 font-medium"></select>
+          <p id="contactInfo" class="text-xs text-slate-500 mt-1.5"></p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-bold text-slate-700 mb-1">2. 點名日期（11/23～1/15 平日）</label>
+            <input type="date" id="attendanceDate" onchange="validateDate()" class="w-full border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-teal-500">
+            <p id="dateWarning" class="text-xs text-rose-600 font-medium mt-1 hidden"></p>
+          </div>
+          <div class="bg-slate-50 rounded-lg p-3 flex flex-col justify-center border border-slate-200">
+            <span class="text-xs text-slate-500">當日日期檢核狀態</span>
+            <span id="weekdayDisplay" class="font-bold text-teal-700 text-base mt-0.5">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 住民點名列表卡片 -->
+      <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-200">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-base text-slate-800">3. 住民出席確認（<span id="residentCount">0</span> 位）</h3>
+          <button type="button" onclick="markAllPresent()" class="text-xs bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-100 px-2.5 py-1 rounded">
+            全部設為出席
+          </button>
+        </div>
+        <div id="residentList" class="space-y-3"></div>
+      </div>
+
+      <!-- 現場照片上傳卡片 -->
+      <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-200">
+        <h3 class="font-bold text-base text-slate-800 mb-1">4. 上傳現場活動照片（必填 1～3 張）</h3>
+        <p class="text-xs text-slate-500 mb-3">系統會自動壓縮照片以加快手機上傳速度</p>
+        
+        <label class="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-teal-400 rounded-lg cursor-pointer bg-teal-50/50 hover:bg-teal-50 transition">
+          <div class="flex flex-col items-center justify-center pt-2 pb-2">
+            <span class="text-teal-700 font-semibold text-sm">＋ 點擊拍照或選擇照片（最多 3 張）</span>
+            <span class="text-xs text-slate-500 mt-1">支援 JPG / PNG 格式</span>
+          </div>
+          <input id="photoInput" type="file" accept="image/*" multiple class="hidden" onchange="handlePhotoSelect(event)" />
+        </label>
+
+        <!-- 照片預覽區 -->
+        <div id="photoPreviewGrid" class="grid grid-cols-3 gap-3 mt-4"></div>
+      </div>
+
+      <!-- 送出按鈕 -->
+      <button onclick="submitForm()" id="submitBtn" class="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold py-3.5 rounded-xl shadow-lg text-base transition">
+        確認提交本日點名與照片
+      </button>
+
+      <!-- 近期提交紀錄 -->
+      <div class="bg-white rounded-xl shadow-sm p-5 border border-slate-200">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="font-bold text-sm text-slate-700">本機構近期提交紀錄</h3>
+          <button onclick="loadHistory()" class="text-xs text-teal-600 hover:underline">重新整理</button>
+        </div>
+        <div id="historyList" class="text-sm text-slate-500 space-y-2">載入中...</div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Loading 遮罩 -->
+  <div id="loadingOverlay" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex flex-col items-center justify-center text-white">
+    <div class="loader ease-linear rounded-full border-4 border-t-4 border-slate-200 h-12 w-12 mb-3"></div>
+    <p id="loadingText" class="font-medium">資料處理中，請稍候...</p>
+  </div>
+
+<script>
+// ================= 已綁定您的 GAS 網頁應用程式 URL =================
+const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxg1x_vkj-OnatNclw-ue9BmYvVqS7CJD7WXN2V_AbWN0tbdOzx-2V2uhMYiX2rTLrX2w/exec';
+
+// ================= 24家機構與住民完整名單（已從附檔清洗匯入） =================
+const INSTITUTIONS = [
+  { id: 1, name: "財團法人屏東縣私立椰子園老人養護之家", contact: "簡鈺純副主任", residents: ["張邱0妹", "洪0秋", "姚陳0枝", "黃0金", "楊0妹", "陳賴0妹"] },
+  { id: 2, name: "財團法人屏東縣私立聖欣老人養護中心", contact: "行政邱京晶", residents: ["張新松", "鄭兆琦", "陳澤榮", "江陳敏", "陳絹", "陳連娣"] },
+  { id: 3, name: "屏東縣私立慈暉老人長期照顧中心(養護型)", contact: "陳郁麒/主任", residents: ["史郭麗美", "許陳秀鸞", "林正美", "鍾陳桂蘭", "朱曾春蘭", "林源昌"] },
+  { id: 4, name: "屏東縣私立天佑老人長期照顧中心(養護型)", contact: "甘玥贇/照顧服務員", residents: ["謝正光", "洪松林", "賴義弘", "曾世賢", "許朝燦", "林玉燕"] },
+  { id: 5, name: "屏東縣私立安德老人養護中心", contact: "林育西/主任", residents: ["徐洽順", "郭功松", "鍾清明", "林耀應", "陳宗明", "王吉在"] },
+  { id: 6, name: "屏東縣私立嘉鴻老人長期照顧中心(養護型)", contact: "主任洪寶鳳", residents: ["胡惠珠", "蕭文良", "鍾如義", "鄭含笑", "吳美麗"] },
+  { id: 7, name: "屏東縣私立頭前溪老人養護中心", contact: "陳信卉 行政", residents: ["謝方碧假", "鄭林秀珠", "吳美寶", "洪靜淑"] },
+  { id: 8, name: "屏東縣私立裕健老人長期照顧機構(養護型)", contact: "劉麗杏主任", residents: ["林森椬", "王永振", "王宇宙", "蔡銘華", "洪吳年", "阮林玉枝"] },
+  { id: 9, name: "屏東縣私立喜樂老人長期照顧中心(養護型)", contact: "吳仙妮／主任", residents: ["高梵禎", "蔡春茂", "吳榮林", "鄧輝松", "劉復恩", "林麗美"] },
+  { id: 10, name: "屏東縣私立朝陽老人長期照顧中心(養護型)", contact: "閻嘉琪主任", residents: ["陶彭金枝", "呂陸夫", "李朝取", "杜莊桂梅", "侯滿", "沈建鴻"] },
+  { id: 11, name: "衛生福利部屏東醫院附設護理之家", contact: "張麗蘋主任", residents: ["曾張秀珠", "李宋玉梅"] },
+  { id: 12, name: "健安護理之家", contact: "潘琇晴，會計", residents: ["駱陳綉滿", "蕭李秀惠", "蔡寶蓮", "陳吳票月"] },
+  { id: 13, name: "屏東榮民總院龍泉分院附設護理之家", contact: "潘卿鈺/副護理長", residents: ["杜王水裁", "郭文香", "賴曾清妹", "李俊鎮"] },
+  { id: 14, name: "康乃心護理之家", contact: "林麗真/負責人", residents: ["王吳阿玉", "張陳琴", "朱玉珍", "邱林秀珍", "張碧華", "梁曾淑女"] },
+  { id: 15, name: "恆基醫療財團法人附設恆愛護理之家", contact: "張沛慈", residents: ["黃李秀理", "盧黃碧珠", "塗春妹", "張枝仔", "林張秀桃"] },
+  { id: 16, name: "國軍高雄總醫院屏東分院附設民眾診療服務處附設護理之家", contact: "林淑秋機構負責人", residents: ["王金蓮", "黃美和", "楊黃秀鑾"] },
+  { id: 17, name: "寶建醫療社團法人附設春風護理之家", contact: "李欣穎，副護理長", residents: ["黃梅", "盧郭玉枝", "邱華妹", "邱蘇秀桑", "林沿秀", "潘王秀恩"] },
+  { id: 18, name: "安和長照社團法人附設屏東縣私立安和住宿長照機構", contact: "任秀芳+業負", residents: ["簡素娥", "宋顯陵", "季黃寶子", "符張美代", "林吳勤妹", "潘富美"] },
+  { id: 19, name: "長榮長照社團法人附設屏東縣私立長榮綜合長照機構", contact: "任玉智+督導", residents: ["邱秀清", "曾黃梅枝", "楊傳謀", "黃邱鳳英", "陳燕珠", "馮廣麟"] },
+  { id: 20, name: "吾老莊長照社團法人附設屏東縣私立吾老莊住宿長照機構", contact: "楊千緹督導", residents: ["柯綿花", "謝李春芳", "江范金英"] },
+  { id: 21, name: "南門長照社團法人附設屏東縣私立南門綜合長照機構", contact: "伍錦秀主任", residents: ["李清", "黃金榮", "盧成吉", "李清義", "柯安全", "尤新盛"] },
+  { id: 22, name: "長春園長照社團法人附設屏東縣私立長春園住宿長照機構", contact: "呂佳惠業務負責人", residents: ["張黃川蓮", "沈銘菊", "邱李美珠", "柯王榮美", "張葉清雲", "潘清甜"] },
+  { id: 23, name: "屏東榮民總醫院龍泉分院松鶴住宿長照機構", contact: "蘇榆雅護理長", residents: ["黃曉霞", "蔡林秀香", "潘李新妹", "潘玉華"] },
+  { id: 24, name: "大愛護理之家", contact: "劉香俊護理長", residents: ["黃同榮", "林雄", "徐崇德", "陳林愛玉", "余香", "黃吳耐"] }
+];
+
+const ABSENT_REASONS = ["身體不適/就醫", "家屬帶回/外出", "住院中", "住民無意願/情緒因素", "其他(請手動輸入)"];
+let currentUser = null;
+let compressedPhotos = [];
+
+// 登入流程（自動將帳號轉小寫，避免手機首字大寫導致失敗）
+async function login() {
+  const username = document.getElementById('username').value.trim().toLowerCase();
+  const password = document.getElementById('password').value.trim();
+  if (!username || !password) return alert('請輸入帳號與密碼');
+
+  showLoading('驗證帳號中...');
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'login', username, password })
+    });
+    const data = await res.json();
+    hideLoading();
+
+    if (data.status === 'success') {
+      currentUser = data.user;
+      initDashboard();
+    } else {
+      alert(data.message);
+    }
+  } catch (err) {
+    hideLoading();
+    alert('連線失敗，請確認 GAS 部署權限是否設為「所有人」：' + err);
+  }
+}
+
+function logout() {
+  currentUser = null;
+  compressedPhotos = [];
+  document.getElementById('mainSection').classList.add('hidden');
+  document.getElementById('userBadge').classList.add('hidden');
+  document.getElementById('loginSection').classList.remove('hidden');
+}
+
+// 初始化主畫面
+function initDashboard() {
+  document.getElementById('loginSection').classList.add('hidden');
+  document.getElementById('mainSection').classList.remove('hidden');
+  document.getElementById('userBadge').classList.remove('hidden');
+  document.getElementById('staffNameDisplay').textContent = currentUser.name;
+
+  const select = document.getElementById('institutionSelect');
+  select.innerHTML = '';
+  const allowed = currentUser.allowedInsts;
+  const filteredInsts = (allowed === 'ALL')
+    ? INSTITUTIONS
+    : INSTITUTIONS.filter(inst => allowed.split(',').map(s => s.trim()).includes(String(inst.id)));
+
+  filteredInsts.forEach(inst => {
+    const opt = document.createElement('option');
+    opt.value = inst.id;
+    opt.textContent = `${inst.id}. ${inst.name}（${inst.residents.length}床）`;
+    select.appendChild(opt);
+  });
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const dateInput = document.getElementById('attendanceDate');
+  dateInput.min = '2026-11-23';
+  dateInput.max = '2027-01-15';
+  dateInput.value = (todayStr >= '2026-11-23' && todayStr <= '2027-01-15') ? todayStr : '2026-11-23';
+  
+  validateDate();
+  onInstitutionChange();
+}
+
+// 日期檢核：11/23 ~ 1/15 且必須為週一至週五
+function validateDate() {
+  const dateStr = document.getElementById('attendanceDate').value;
+  const warningEl = document.getElementById('dateWarning');
+  const weekdayEl = document.getElementById('weekdayDisplay');
+  const submitBtn = document.getElementById('submitBtn');
+
+  if (!dateStr) return false;
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  const weekNames = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+  weekdayEl.textContent = `${dateStr} (${weekNames[day]})`;
+
+  if (dateStr < '2026-11-23' || dateStr > '2027-01-15') {
+    warningEl.textContent = '⚠️ 日期不在計畫執行期間（11/23 ～ 1/15）內！';
+    warningEl.classList.remove('hidden');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    return false;
+  }
+  if (day === 0 || day === 6) {
+    warningEl.textContent = '⚠️ 假日無需點名，請選擇週一至週五的日期！';
+    warningEl.classList.remove('hidden');
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    return false;
+  }
+
+  warningEl.classList.add('hidden');
+  submitBtn.disabled = false;
+  submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+  return true;
+}
+
+// 切換機構時渲染住民名單
+function onInstitutionChange() {
+  const instId = Number(document.getElementById('institutionSelect').value);
+  const inst = INSTITUTIONS.find(i => i.id === instId);
+  if (!inst) return;
+
+  document.getElementById('contactInfo').textContent = `機構主責窗口：${inst.contact}`;
+  document.getElementById('residentCount').textContent = inst.residents.length;
+
+  const listEl = document.getElementById('residentList');
+  listEl.innerHTML = '';
+
+  inst.residents.forEach((name, index) => {
+    const card = document.createElement('div');
+    card.className = 'p-3.5 rounded-lg border border-slate-200 bg-slate-50/70 space-y-2.5';
+    card.innerHTML = `
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="font-bold text-slate-800 text-base">
+          <span class="inline-block w-6 text-slate-400 text-sm">${index + 1}.</span>${name}
+        </div>
+        <div class="flex gap-2">
+          <label class="cursor-pointer">
+            <input type="radio" name="status_${index}" value="出席" checked onchange="toggleReason(${index}, false)" class="peer hidden">
+            <span class="px-3.5 py-1.5 rounded-md text-sm font-medium border border-slate-300 bg-white text-slate-600 peer-checked:bg-emerald-600 peer-checked:text-white peer-checked:border-emerald-600 transition">
+              ✓ 出席
+            </span>
+          </label>
+          <label class="cursor-pointer">
+            <input type="radio" name="status_${index}" value="未出席" onchange="toggleReason(${index}, true)" class="peer hidden">
+            <span class="px-3.5 py-1.5 rounded-md text-sm font-medium border border-slate-300 bg-white text-slate-600 peer-checked:bg-rose-600 peer-checked:text-white peer-checked:border-rose-600 transition">
+              ✕ 未出席
+            </span>
+          </label>
+        </div>
+      </div>
+      
+      <div id="reasonBox_${index}" class="hidden pt-1 border-t border-slate-200 space-y-2">
+        <div class="flex flex-col sm:flex-row gap-2">
+          <select id="reasonSelect_${index}" onchange="onReasonSelect(${index})" class="text-sm border border-slate-300 rounded px-2.5 py-1.5 bg-white">
+            <option value="">-- 請選擇未出席原因 --</option>
+            ${ABSENT_REASONS.map(r => `<option value="${r}">${r}</option>`).join('')}
+          </select>
+          <input type="text" id="reasonText_${index}" placeholder="補充說明原因（未出席必填）" class="flex-1 text-sm border border-slate-300 rounded px-2.5 py-1.5 bg-white">
+        </div>
+      </div>
+    `;
+    listEl.appendChild(card);
+  });
+
+  loadHistory();
+}
+
+function toggleReason(index, isAbsent) {
+  const box = document.getElementById(`reasonBox_${index}`);
+  if (isAbsent) {
+    box.classList.remove('hidden');
+  } else {
+    box.classList.add('hidden');
+    document.getElementById(`reasonSelect_${index}`).value = '';
+    document.getElementById(`reasonText_${index}`).value = '';
+  }
+}
+
+function onReasonSelect(index) {
+  const sel = document.getElementById(`reasonSelect_${index}`).value;
+  const txt = document.getElementById(`reasonText_${index}`);
+  if (sel && !sel.includes('其他')) {
+    txt.value = sel;
+  } else {
+    txt.value = '';
+    txt.focus();
+  }
+}
+
+function markAllPresent() {
+  const instId = Number(document.getElementById('institutionSelect').value);
+  const inst = INSTITUTIONS.find(i => i.id === instId);
+  inst.residents.forEach((_, idx) => {
+    const radio = document.querySelector(`input[name="status_${idx}"][value="出席"]`);
+    if (radio) {
+      radio.checked = true;
+      toggleReason(idx, false);
+    }
+  });
+}
+
+async function handlePhotoSelect(event) {
+  const files = Array.from(event.target.files);
+  if (compressedPhotos.length + files.length > 3) {
+    alert('最多只能上傳 3 張現場照片！');
+    event.target.value = '';
+    return;
+  }
+
+  showLoading('壓縮處理照片中...');
+  for (const file of files) {
+    const base64 = await compressImage(file, 1280, 0.75);
+    compressedPhotos.push({ name: file.name, base64 });
+  }
+  hideLoading();
+  event.target.value = '';
+  renderPhotoPreviews();
+}
+
+function compressImage(file, maxWidth, quality) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPhotoPreviews() {
+  const grid = document.getElementById('photoPreviewGrid');
+  grid.innerHTML = '';
+  compressedPhotos.forEach((photo, idx) => {
+    const div = document.createElement('div');
+    div.className = 'relative rounded-lg overflow-hidden border border-slate-300 aspect-square bg-slate-100';
+    div.innerHTML = `
+      <img src="${photo.base64}" class="w-full h-full object-cover">
+      <button type="button" onclick="removePhoto(${idx})" class="absolute top-1 right-1 bg-rose-600 text-white rounded-full w-6 h-6 text-xs font-bold shadow">✕</button>
+      <span class="absolute bottom-1 left-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">照片 ${idx + 1}</span>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function removePhoto(idx) {
+  compressedPhotos.splice(idx, 1);
+  renderPhotoPreviews();
+}
+
+async function submitForm() {
+  if (!validateDate()) return;
+
+  const instId = Number(document.getElementById('institutionSelect').value);
+  const inst = INSTITUTIONS.find(i => i.id === instId);
+  const dateStr = document.getElementById('attendanceDate').value;
+  const d = new Date(dateStr + 'T00:00:00');
+  const weekday = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'][d.getDay()];
+
+  const records = [];
+  for (let i = 0; i < inst.residents.length; i++) {
+    const status = document.querySelector(`input[name="status_${i}"]:checked`).value;
+    const reasonText = document.getElementById(`reasonText_${i}`).value.trim();
+    const reasonSel = document.getElementById(`reasonSelect_${i}`).value;
+    const finalReason = reasonText || reasonSel;
+
+    if (status === '未出席' && !finalReason) {
+      alert(`請註明住民「${inst.residents[i]}」的未出席原因！`);
+      return;
+    }
+    records.push({
+      residentName: inst.residents[i],
+      status,
+      reason: finalReason
+    });
+  }
+
+  if (compressedPhotos.length < 1 || compressedPhotos.length > 3) {
+    alert('請上傳 1 至 3 張現場照片！');
+    return;
+  }
+
+  if (!confirm(`確認提交【${inst.name}】${dateStr} 的點名紀錄嗎？`)) return;
+
+  showLoading('正在上傳照片與點名資料至雲端，請勿關閉視窗...');
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'submitAttendance',
+        instId: inst.id,
+        instName: inst.name,
+        date: dateStr,
+        weekday,
+        staffName: currentUser.name,
+        records,
+        photos: compressedPhotos
+      })
+    });
+    const data = await res.json();
+    hideLoading();
+
+    if (data.status === 'success') {
+      alert('✅ ' + data.message);
+      compressedPhotos = [];
+      renderPhotoPreviews();
+      loadHistory();
+    } else {
+      alert('❌ 提交失敗：' + data.message);
+    }
+  } catch (err) {
+    hideLoading();
+    alert('網路連線異常，請重試：' + err);
+  }
+}
+
+async function loadHistory() {
+  const instId = document.getElementById('institutionSelect').value;
+  const historyEl = document.getElementById('historyList');
+  historyEl.innerHTML = '讀取紀錄中...';
+
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'getHistory', instId })
+    });
+    const data = await res.json();
+    if (data.status === 'success' && data.history.length > 0) {
+      historyEl.innerHTML = data.history.map(h => `
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded border border-slate-200">
+          <div>
+            <span class="font-bold text-slate-700">${h.date} (${h.weekday})</span>
+            <span class="text-xs text-slate-500 ml-2">填報：${h.staff}</span>
+            <div class="text-xs mt-0.5">
+              <span class="text-emerald-700 font-medium">出席 ${h.attendCount} 人</span> / 
+              <span class="text-rose-600 font-medium">未出席 ${h.absentCount} 人</span>
+            </div>
+          </div>
+          ${h.photoUrl ? `<a href="${h.photoUrl}" target="_blank" class="text-xs bg-white border border-slate-300 px-2 py-1 rounded text-teal-700 hover:bg-teal-50">查看照片</a>` : ''}
+        </div>
+      `).join('');
+    } else {
+      historyEl.innerHTML = '<p class="text-xs text-slate-400">尚無點名紀錄</p>';
+    }
+  } catch (e) {
+    historyEl.innerHTML = '<p class="text-xs text-rose-400">無法讀取紀錄</p>';
+  }
+}
+
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+</script>
+</body>
+</html>
